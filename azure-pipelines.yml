@@ -48,10 +48,6 @@ steps:
     ArtifactName: 'drop'
     publishLocation: 'Container'
 
-- job: Database
-  displayName: 'Build Database'
-  pool:
-    vmImage: 'windows-2019'
 - task: MSBuild@1
   inputs:
     solution: '**/*.sqlproj'
