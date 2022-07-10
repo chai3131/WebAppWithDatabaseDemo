@@ -37,3 +37,50 @@ steps:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: 'AzureResourceGroupDeployment'
+    Contents: '*.json'
+    TargetFolder: '$(build.artifactstagingdirectory)'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+
+- job: Database
+  displayName: 'Build Database'
+  pool:
+    vmImage: 'windows-2019'
+steps:
+- task: MSBuild@1
+  inputs:
+    solution: '**/*.sqlproj'
+    msbuildArguments: '''/p:OutDir=$(Build.ArtifactStagingDirectory)'''
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+
+- job: Selenium
+  displayName: 'Build UI Tests'
+  pool:
+    vmImage: 'windows-2019'
+steps:
+
+- task: NuGetToolInstaller@1
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: '**/*.sln'
+    feedsToUse: 'select'
+- task: MSBuild@1
+  inputs:
+    solution: '**/*.csproj'
+    msbuildArguments: '''/p:OutDir=$(Build.ArtifactStagingDirectory)'''
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
