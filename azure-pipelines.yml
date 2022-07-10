@@ -24,7 +24,6 @@ jobs:
       projects: '**/WebApp.csproj'
   
     workingDirectory: WebApp
-    displayName: 'PS : Add Project GUID'
     enabled: false
   
   
