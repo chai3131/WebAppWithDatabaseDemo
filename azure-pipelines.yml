@@ -1,82 +1,133 @@
-# ASP.NET Core
-# Build and test ASP.NET Core projects targeting .NET Core.
-# Add steps that run tests, create a NuGet package, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
-
-trigger: none
+trigger: 'none' # will disable CI builds entirely
+   
 jobs:
--job:webapp
+- job: WebApp
   displayName: 'Build Web App'
   pool:
-  vmImage: ubuntu-latest
-
- variables:
-  buildConfiguration: 'Release'
-
- steps:
- - task: DotNetCoreCLI@2
+    vmImage: 'windows-2019'
+  variables:
+    BuildConfiguration: release
+  
+  steps:
+  
+  - task: UseDotNet@2
+    displayName: Install .NET 6 sdk
     inputs:
-      command: 'restore'
-      projects: '**/WebApp.csproj'
-      feedsToUse: 'select'
+      packageType: sdk
+      version: 6.0.x
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+
   - task: DotNetCoreCLI@2
+    displayName: Restore
     inputs:
-      command: 'build'
+      command: restore
+      projects: '**/WebApp.csproj'
+  
+  - powershell: |
+     $paths = Get-ChildItem -include *.csproj -Recurse
+     foreach($pathobject in $paths) 
+     {
+         $path = $pathobject.fullname
+         $doc = New-Object System.Xml.XmlDocument
+         $doc.Load($path)
+         $child = $doc.CreateElement("ProjectGuid")
+         $child.InnerText = [guid]::NewGuid().ToString().ToUpper()
+         $node = $doc.SelectSingleNode("//Project/PropertyGroup")
+         $node.AppendChild($child)
+         $doc.Save($path)
+     }
+    workingDirectory: WebApp
+    displayName: 'PS : Add Project GUID'
+    enabled: false
+  
+  - task: SonarCloudPrepare@1
+    displayName: 'Prepare analysis on SonarCloud'
+    inputs:
+      SonarCloud: SonarCloud
+      organization: houssemdellai
+      projectKey: WebAppWithDatabaseDemo
+  
+  - task: DotNetCoreCLI@2
+    displayName: Build
+    inputs:
       projects: '**/WebApp.csproj'
       arguments: '--configuration $(BuildConfiguration)'
+  
   - task: DotNetCoreCLI@2
+    displayName: Test
     inputs:
-      command: 'test'
+      command: test
       projects: '**/*UnitTest*.csproj'
       arguments: '--configuration $(BuildConfiguration)'
+  
   - task: DotNetCoreCLI@2
+    displayName: Publish
     inputs:
-      command: 'publish'
-      publishWebProjects: true
+      command: publish
+      publishWebProjects: True
       arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
+      zipAfterPublish: True
+  
+  - task: SonarCloudAnalyze@1
+    displayName: 'Run Code Analysis'
+  
+  - task: SonarCloudPublish@1
+    displayName: 'Publish Quality Gate Result'
+  
   - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact (WebApp.zip)'
     inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'drop'
-      publishLocation: 'Container'
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: 'AzureResourceGroupDeployment'
-      Contents: '*.json'
-      TargetFolder: '$(build.artifactstagingdirectory)'
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'drop'
-      publishLocation: 'Container'
--job: msbuild
+      PathtoPublish: '$(build.artifactstagingdirectory)'
+
+- job: Database
+  displayName: 'Build Database'
   pool:
-    vmImage: vs2017-win2016
-    variables:
-    buildConfiguration: 'Release'
+    vmImage: 'windows-2019'
+
   steps:
   - task: MSBuild@1
+    displayName: 'Build solution WebApp.Database.sqlproj'
     inputs:
-      solution: '**/*.sqlproj'
-      msbuildArguments: '''/p:OutDir=$(Build.ArtifactStagingDirectory)'''
+      solution: WebApp.Database/WebApp.Database.sqlproj
+      msbuildArguments: '/p:OutDir=$(Build.ArtifactStagingDirectory)'
+  
   - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact (Dacpac)'
     inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'drop'
-      publishLocation: 'Container'
+      ArtifactName: dacpac
 
-  - task: NuGetToolInstaller@1
+- job: Selenium
+  displayName: 'Build UI Tests'
+  pool:
+    vmImage: 'windows-2019'
+
+  steps:
+  - task: NuGetToolInstaller@0
+    displayName: 'Use NuGet 4.3.0'
+
   - task: NuGetCommand@2
+    displayName: 'NuGet restore'
     inputs:
-      command: 'restore'
-      restoreSolution: '**/*.sln'
-      feedsToUse: 'select'
+      restoreSolution: WebAppWithDatabase.sln
+
   - task: MSBuild@1
+    displayName: 'Build project SeleniumUiTests.csproj'
     inputs:
-      solution: '**/*.csproj'
-      msbuildArguments: '''/p:OutDir=$(Build.ArtifactStagingDirectory)'''
+      solution: SeleniumUiTests/SeleniumUiTests.csproj
+      msbuildArguments: '/p:OutDir=$(Build.ArtifactStagingDirectory)'
+
   - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: UI-Test'
     inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'drop'
-      publishLocation: 'Container'
+      ArtifactName: 'UI-Test'
+
+- job: Infrastructure
+  displayName: 'Copy Infrastructure files (ARM)'
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: ARM templates'
+    inputs:
+      PathtoPublish: AzureResourceGroupDeployment
+      ArtifactName: arm
