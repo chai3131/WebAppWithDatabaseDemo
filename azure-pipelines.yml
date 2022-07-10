@@ -47,6 +47,7 @@ steps:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
+
 pool:
   vmImage: vs2017-win2016
 variables:
