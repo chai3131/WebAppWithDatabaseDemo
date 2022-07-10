@@ -4,76 +4,78 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
 trigger: none
-
-pool:
+jobs:
+-job:webapp
+ pool:
   vmImage: ubuntu-latest
 
-variables:
+ variables:
   buildConfiguration: 'Release'
 
-steps:
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'restore'
-    projects: '**/WebApp.csproj'
-    feedsToUse: 'select'
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'build'
-    projects: '**/WebApp.csproj'
-    arguments: '--configuration $(BuildConfiguration)'
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'test'
-    projects: '**/*UnitTest*.csproj'
-    arguments: '--configuration $(BuildConfiguration)'
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'publish'
-    publishWebProjects: true
-    arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
-- task: CopyFiles@2
-  inputs:
-    SourceFolder: 'AzureResourceGroupDeployment'
-    Contents: '*.json'
-    TargetFolder: '$(build.artifactstagingdirectory)'
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
+ steps:
+ - task: DotNetCoreCLI@2
+    inputs:
+      command: 'restore'
+      projects: '**/WebApp.csproj'
+      feedsToUse: 'select'
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'build'
+      projects: '**/WebApp.csproj'
+      arguments: '--configuration $(BuildConfiguration)'
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'test'
+      projects: '**/*UnitTest*.csproj'
+      arguments: '--configuration $(BuildConfiguration)'
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'publish'
+      publishWebProjects: true
+      arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: 'AzureResourceGroupDeployment'
+      Contents: '*.json'
+      TargetFolder: '$(build.artifactstagingdirectory)'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+-job: msbuild
+  pool:
+    vmImage: vs2017-win2016
+    variables:
+    buildConfiguration: 'Release'
+  steps:
+  - task: MSBuild@1
+    inputs:
+      solution: '**/*.sqlproj'
+      msbuildArguments: '''/p:OutDir=$(Build.ArtifactStagingDirectory)'''
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
 
-pool:
-  vmImage: vs2017-win2016
-variables:
-  buildConfiguration: 'Release'
-- task: MSBuild@1
-  inputs:
-    solution: '**/*.sqlproj'
-    msbuildArguments: '''/p:OutDir=$(Build.ArtifactStagingDirectory)'''
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
-
-- task: NuGetToolInstaller@1
-- task: NuGetCommand@2
-  inputs:
-    command: 'restore'
-    restoreSolution: '**/*.sln'
-    feedsToUse: 'select'
-- task: MSBuild@1
-  inputs:
-    solution: '**/*.csproj'
-    msbuildArguments: '''/p:OutDir=$(Build.ArtifactStagingDirectory)'''
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
+  - task: NuGetToolInstaller@1
+  - task: NuGetCommand@2
+    inputs:
+      command: 'restore'
+      restoreSolution: '**/*.sln'
+      feedsToUse: 'select'
+  - task: MSBuild@1
+    inputs:
+      solution: '**/*.csproj'
+      msbuildArguments: '''/p:OutDir=$(Build.ArtifactStagingDirectory)'''
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
