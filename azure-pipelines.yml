@@ -6,7 +6,8 @@
 trigger: none
 jobs:
 -job:webapp
- pool:
+  displayName: 'Build Web App'
+  pool:
   vmImage: ubuntu-latest
 
  variables:
