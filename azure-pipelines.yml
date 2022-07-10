@@ -23,9 +23,6 @@ jobs:
       command: restore
       projects: '**/WebApp.csproj'
   
-    workingDirectory: WebApp
-    enabled: false
-  
   
   - task: DotNetCoreCLI@2
     displayName: Build
