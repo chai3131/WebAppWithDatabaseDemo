@@ -1,8 +1,34 @@
-trigger: none
-jobs:
--job:webapp
- displayName: 'webapp build'
- pool: 
-    vmImage: 'ubuntu-latest'
 
-  
+trigger: 'none'
+jobs:
+- job: webapp
+  displayName: 'build .net'
+  pool:
+    vmImage: 'ubuntu-latest'
+  variables:
+    BuildConfiguration: relese
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    projects: '**/webapp.csproj'
+    feedsToUse: 'select'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: '**/webapp.csproj'
+    arguments: '--configuration $(BuildConfiguration)'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'test'
+    projects: '**/*UnitTest*.csproj'
+    arguments: '--configuration $(BuildConfiguration)'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: true
+    arguments: '--configuration $(BuildConfiguration) --output $(build.artfactstagingdirectory)'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
