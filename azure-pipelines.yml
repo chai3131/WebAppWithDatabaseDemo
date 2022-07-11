@@ -12,12 +12,12 @@ jobs:
   - task: DotNetCoreCLI@2
     inputs:
       command: 'restore'
-      projects: '**/webapp.csproj'
+      projects: '**/WebApp.csproj'
       feedsToUse: 'select'
   - task: DotNetCoreCLI@2
     inputs:
       command: 'build'
-      projects: '**/webapp.csproj'
+      projects: '**/WebApp.csproj'
       arguments: '--configuration $(BuildConfiguration)'
   - task: DotNetCoreCLI@2
     inputs:
